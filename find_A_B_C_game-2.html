@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find A, B & C — 1 to 100</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,sans-serif;margin:0;background:#f4f6f8;color:#17202a;text-align:center}
+  .wrap{max-width:760px;margin:auto;padding:20px}
+  h1{margin:8px 0 5px;font-size:30px}
+  .sub{margin:0 0 15px;color:#566573}
+  .panel{background:white;border-radius:16px;padding:15px;box-shadow:0 3px 14px #0001;margin-bottom:15px}
+  .stats{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+  .stat{min-width:105px;padding:9px 14px;border-radius:10px;background:#eef2f5;font-weight:bold}
+  #message{font-size:18px;font-weight:bold;min-height:27px;margin:10px}
+  #grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+  button.cell{border:0;border-radius:8px;background:#e8edf2;padding:10px 2px;font-size:16px;font-weight:bold;cursor:pointer;aspect-ratio:1}
+  button.cell:hover{background:#d5dde5}
+  button.cell:disabled{cursor:default}
+  .foundA{background:#f9c74f!important;color:#000}
+  .foundB{background:#90be6d!important;color:#000}
+  .foundC{background:#577590!important;color:white}
+  .miss{background:#dfe4e8!important;color:#899}
+  .controls button{border:0;border-radius:10px;padding:11px 18px;margin:4px;font-weight:bold;cursor:pointer}
+  #newGame{background:#2d6cdf;color:white}
+  #showRules{background:#e8edf2}
+  #rules{display:none;text-align:left;margin-top:10px;color:#465}
+  @media(max-width:500px){#grid{gap:3px}button.cell{font-size:13px;padding:5px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎯 Find A, B & C</h1>
+  <p class="sub">Three hidden letters are hiding behind numbers 1–100.</p>
+
+  <div class="panel">
+    <div class="stats">
+      <div class="stat">A: <span id="a">❓</span></div>
+      <div class="stat">B: <span id="b">❓</span></div>
+      <div class="stat">C: <span id="c">❓</span></div>
+      <div class="stat">Guesses: <span id="guesses">0</span></div>
+    </div>
+    <div id="message">Choose a number!</div>
+    <div id="grid"></div>
+    <div class="controls">
+      <button id="newGame">🔄 New Game</button>
+      <button id="showRules">How to Play</button>
+      <div id="rules">
+        <b>How to play:</b>
+        <ol>
+          <li>Pick any number from 1 to 100.</li>
+          <li>Each number can be selected only once.</li>
+          <li>Find the hidden <b>A</b>, <b>B</b>, and <b>C</b>.</li>
+          <li>The game ends when all three letters are found.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let targets={}, guesses=0, found=new Set();
+
+function newGame(){
+  const nums=[...Array(100)].map((_,i)=>i+1);
+  nums.sort(()=>Math.random()-0.5);
+  targets={A:nums[0],B:nums[1],C:nums[2]};
+  guesses=0; found.clear();
+  document.getElementById('guesses').textContent=guesses;
+  ['a','b','c'].forEach(x=>document.getElementById(x).textContent='❓');
+  document.getElementById('message').textContent='Choose a number!';
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  for(let n=1;n<=100;n++){
+    const btn=document.createElement('button');
+    btn.className='cell'; btn.textContent=n;
+    btn.onclick=()=>pick(n,btn);
+    grid.appendChild(btn);
+  }
+}
+function pick(n,btn){
+  if(btn.disabled) return;
+  guesses++;
+  document.getElementById('guesses').textContent=guesses;
+  btn.disabled=true;
+  let letter=null;
+  for(const x of ['A','B','C']) if(targets[x]===n) letter=x;
+  if(letter){
+    found.add(letter);
+    btn.textContent=letter;
+    btn.classList.add('found'+letter);
+    document.getElementById(letter.toLowerCase()).textContent=n;
+    document.getElementById('message').textContent='🎉 You found '+letter+'!';
+    if(found.size===3){
+      document.getElementById('message').textContent=
+        '🏆 Congratulations! You found A, B & C in '+guesses+' guesses!';
+    }
+  }else{
+    btn.textContent='•';
+    btn.classList.add('miss');
+    document.getElementById('message').textContent='Not here. Try another number!';
+  }
+}
+document.getElementById('newGame').onclick=newGame;
+document.getElementById('showRules').onclick=()=>{
+  const r=document.getElementById('rules');
+  r.style.display=r.style.display==='block'?'none':'block';
+};
+newGame();
+</script>
+</body>
+</html>

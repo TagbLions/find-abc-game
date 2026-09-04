@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Find A, B & C — 1 to 100</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Arial, sans-serif; background: #f3f4f6;
+    color: #111827; display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 620px; padding: 14px; }
+  .card {
+    background: white; border-radius: 18px; padding: 18px;
+    box-shadow: 0 5px 20px rgba(0,0,0,.10);
+  }
+  h1 { margin: 0 0 5px; text-align: center; font-size: 25px; }
+  .sub { text-align:center; color:#6b7280; margin:0 0 15px; font-size:14px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .stat { background:#f3f4f6; border-radius:12px; padding:9px; text-align:center; }
+  .stat b { display:block; font-size:20px; }
+  .stat span { font-size:11px; color:#6b7280; }
+  .target {
+    text-align:center; padding:11px; border-radius:12px; background:#eef2ff;
+    font-weight:bold; margin-bottom:12px;
+  }
+  #grid {
+    display:grid; grid-template-columns:repeat(10,1fr); gap:4px;
+    touch-action: manipulation;
+  }
+  .cell {
+    border:0; background:#e5e7eb; border-radius:7px; aspect-ratio:1;
+    font-weight:bold; font-size:clamp(11px, 3.5vw, 17px); cursor:pointer;
+    color:#111827;
+  }
+  .cell:active { transform:scale(.94); }
+  .cell.found { background:#86efac; color:#14532d; }
+  .cell.wrong { animation:shake .25s; background:#fecaca; }
+  .cell.disabled { opacity:.55; }
+  @keyframes shake {
+    25%{transform:translateX(-3px)} 50%{transform:translateX(3px)} 75%{transform:translateX(-2px)}
+  }
+  .message { min-height:42px; text-align:center; padding:10px; font-size:14px; font-weight:bold; }
+  .buttons { display:flex; gap:8px; margin-top:5px; }
+  button.action {
+    flex:1; border:0; border-radius:12px; padding:12px; font-weight:bold;
+    cursor:pointer; font-size:15px;
+  }
+  #newGame { background:#111827; color:white; }
+  #share { background:#2563eb; color:white; }
+  .result { display:none; text-align:center; padding:14px; margin-top:12px; background:#ecfdf5; border-radius:14px; }
+  .result h2 { margin:0 0 5px; }
+  .rules { margin-top:12px; color:#6b7280; font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>🔎 Find A, B & C</h1>
+    <p class="sub">Can you find all three hidden letters?</p>
+
+    <div class="stats">
+      <div class="stat"><b id="time">0</b><span>SECONDS</span></div>
+      <div class="stat"><b id="attempts">0</b><span>ATTEMPTS</span></div>
+      <div class="stat"><b id="found">0/3</b><span>FOUND</span></div>
+    </div>
+
+    <div class="target" id="target">Find: 🅰️ A</div>
+    <div id="grid"></div>
+    <div class="message" id="message">Tap a number to make your guess.</div>
+
+    <div class="buttons">
+      <button class="action" id="newGame">🔄 New Game</button>
+      <button class="action" id="share">📤 Share Game</button>
+    </div>
+
+    <div class="result" id="result">
+      <h2>🎉 Congratulations!</h2>
+      <div id="resultText"></div>
+    </div>
+
+    <div class="rules">
+      Three hidden letters are placed behind numbers 1–100. Find A, then B, then C.
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const grid = document.getElementById('grid');
+  const target = document.getElementById('target');
+  const message = document.getElementById('message');
+  const timeEl = document.getElementById('time');
+  const attemptsEl = document.getElementById('attempts');
+  const foundEl = document.getElementById('found');
+  const result = document.getElementById('result');
+  const resultText = document.getElementById('resultText');
+
+  let positions = {};
+  let nextLetter = 0;
+  let found = [];
+  let attempts = 0;
+  let seconds = 0;
+  let timer = null;
+  let started = false;
+
+  const letters = ['A','B','C'];
+
+  function randomPosition(excluded) {
+    let n;
+    do { n = Math.floor(Math.random() * 100) + 1; }
+    while (excluded.includes(n));
+    return n;
+  }
+
+  function newGame() {
+    clearInterval(timer);
+    positions = {};
+    const used = [];
+    for (const l of letters) {
+      positions[l] = randomPosition(used);
+      used.push(positions[l]);
+    }
+
+    nextLetter = 0;
+    found = [];
+    attempts = 0;
+    seconds = 0;
+    started = false;
+    timeEl.textContent = '0';
+    attemptsEl.textContent = '0';
+    foundEl.textContent = '0/3';
+    result.style.display = 'none';
+    message.textContent = 'Tap a number to make your guess.';
+    render();
+    updateTarget();
+  }
+
+  function startTimer() {
+    if (started) return;
+    started = true;
+    timer = setInterval(() => {
+      seconds++;
+      timeEl.textContent = seconds;
+    }, 1000);
+  }
+
+  function updateTarget() {
+    if (nextLetter >= letters.length) {
+      target.textContent = '✅ All letters found!';
+      return;
+    }
+    const icons = ['🅰️','🅱️','©️'];
+    target.textContent = `Find: ${icons[nextLetter]} ${letters[nextLetter]}`;
+  }
+
+  function render() {
+    grid.innerHTML = '';
+    for (let n = 1; n <= 100; n++) {
+      const b = document.createElement('button');
+      b.className = 'cell';
+      b.textContent = n;
+      b.setAttribute('aria-label', `Number ${n}`);
+      if (found.some(x => x.number === n)) {
+        const item = found.find(x => x.number === n);
+        b.classList.add('found');
+        b.textContent = item.letter;
+        b.disabled = true;
+      }
+      b.addEventListener('click', () => guess(n, b));
+      grid.appendChild(b);
+    }
+  }
+
+  function guess(n, button) {
+    if (nextLetter >= 3) return;
+    startTimer();
+    attempts++;
+    attemptsEl.textContent = attempts;
+
+    const letter = letters[nextLetter];
+
+    if (positions[letter] === n) {
+      found.push({number:n, letter});
+      nextLetter++;
+      foundEl.textContent = `${found.length}/3`;
+      button.classList.add('found');
+      button.textContent = letter;
+      button.disabled = true;
+      message.textContent = `🎯 Correct! You found ${letter} at number ${n}.`;
+      updateTarget();
+
+      if (nextLetter === 3) finish();
+    } else {
+      button.classList.add('wrong');
+      message.textContent = `❌ Not ${letter}. Try another number.`;
+      setTimeout(() => button.classList.remove('wrong'), 300);
+    }
+  }
+
+  function finish() {
+    clearInterval(timer);
+    result.style.display = 'block';
+    resultText.innerHTML =
+      `You found A, B and C in <b>${attempts}</b> attempts and <b>${seconds}</b> seconds.<br>
+       Numbers: A = <b>${positions.A}</b>, B = <b>${positions.B}</b>, C = <b>${positions.C}</b>`;
+    message.textContent = '🏆 Great game! Challenge someone else.';
+  }
+
+  document.getElementById('newGame').addEventListener('click', newGame);
+
+  document.getElementById('share').addEventListener('click', async () => {
+    const text = '🎯 Can you find A, B and C hidden among numbers 1–100? Play the game!';
+    const data = { title: 'Find A, B & C', text };
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      data.url = location.href;
+    }
+    try {
+      if (navigator.share) await navigator.share(data);
+      else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(location.href);
+        message.textContent = '🔗 Game link copied. Paste it into Messenger!';
+      } else {
+        message.textContent = 'Copy this page address and send it in Messenger.';
+      }
+    } catch(e) {}
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
